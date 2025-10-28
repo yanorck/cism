@@ -84,7 +84,7 @@ def check_password():
     col_vazio1, col_form, col_vazio2 = st.columns([1, 2, 1])
     
     with col_form:
-        st.title("🔒 Acesso Restrito - Dashboard CISM")
+        st.title("Acesso Restrito - Dashboard CISM")
         st.info("Por favor, insira suas credenciais para continuar.")
         
         with st.form("login_form", clear_on_submit=False):
@@ -96,7 +96,7 @@ def check_password():
             st.form_submit_button("Acessar o Dashboard", on_click=password_entered, type="primary")
         
         if "password_correct" in st.session_state and not st.session_state["password_correct"]:
-            st.error("😕 Usuário ou Senha incorretos.")
+            st.error("Usuário ou Senha incorretos.")
             
     return False
 
@@ -111,36 +111,116 @@ COLOR_PALETTE = {
     "sidebar_bg": "#FFFFFF",
     "text_dark": "#31333F",
     "text_light": "#555555",
-    "kpi_border": "#E0E0E0"
+    "kpi_border": "#E0E0E0" 
 }
 MEDICAL_BLUE = COLOR_PALETTE["secondary"]
 
+# --- CSS INJETADO (ESTILO "ROBUSTO PROFISSIONAL" + RESPONSIVIDADE) ---
 st.markdown(f"""
 <style>
-    /* Estilos para o Streamlit */
-    [data-testid="stAppViewContainer"] > .main {{ background-color: {COLOR_PALETTE['background']}; }}
-    [data-testid="stSidebar"] {{ background-color: {COLOR_PALETTE['sidebar_bg']}; }}
-    h1, h2, h3 {{ color: {COLOR_PALETTE['primary']}; }}
-    
-    /* Estilo dos KPIs (Métricas) */
-    [data-testid="stMetric"] {{
-        background-color: #FFFFFF; border: 1px solid {COLOR_PALETTE['kpi_border']}; 
-        border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    /* --- CONFIGURAÇÃO GERAL "ROBUSTO PROFISSIONAL" --- */
+    /* Define a fonte Arial (robusta) para todo o app */
+    body, .stApp, input, textarea, button, select, p, div, span {{
+        font-family: Arial, Helvetica, sans-serif !important; 
+    }}
+
+    /* --- PÁGINA PRINCIPAL E SIDEBAR --- */
+    [data-testid="stAppViewContainer"] > .main {{ 
+        background-color: {COLOR_PALETTE['background']}; 
     }}
     
-    /* CORREÇÃO FORÇADA DE TRUNCAMENTO DE VALORES LONGOS NOS KPIs */
-    [data-testid="stMetricValue"] {{ 
-        color: {COLOR_PALETTE['text_dark']}; 
-        font-size: 2.2rem; 
-        white-space: nowrap; /* Evita quebra de linha */
-        overflow: hidden;    /* Esconde o que excede */
-        text-overflow: ellipsis; /* Adiciona '...' se cortar */
+    [data-testid="stSidebar"] {{ 
+        background-color: {COLOR_PALETTE['sidebar_bg']}; 
+        border-right: 1px solid {COLOR_PALETTE['kpi_border']};
+        border-radius: 0px;
+    }}
+    
+    h1, h2, h3 {{ 
+        color: {COLOR_PALETTE['primary']}; 
+        font-family: Arial, Helvetica, sans-serif !important; 
+    }}
+    
+    /* --- ESTILO DE "CARDS" (Melhor Prática) --- */
+
+    /* Estilo dos KPIs (Métricas) */
+    [data-testid="stMetric"] {{
+        background-color: #FFFFFF; 
+        border: 1px solid {COLOR_PALETTE['kpi_border']}; 
+        border-radius: 10px; /* Cantos levemente arredondados */
+        padding: 20px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Sombra sutil */
     }}
     
     /* Estilo dos Gráficos */
     [data-testid="stPlotlyChart"] {{
-        background-color: #FFFFFF; border-radius: 10px; padding: 10px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        background-color: #FFFFFF; 
+        border: 1px solid {COLOR_PALETTE['kpi_border']};
+        border-radius: 10px; /* Cantos levemente arredondados */
+        padding: 10px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Sombra sutil */
+    }}
+    
+    /* Estilo do Formulário de Login (na página de login) */
+    [data-testid="stForm"] {{
+        background-color: #FFFFFF;
+        border: 1px solid {COLOR_PALETTE['kpi_border']};
+        padding: 25px;
+        border-radius: 10px; /* Cantos levemente arredondados */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Sombra sutil */
+    }}
+    
+    /* --- OUTROS ELEMENTOS --- */
+    
+    /* Tabela de dados */
+    [data-testid="stDataFrame"] {{
+        border: 1px solid {COLOR_PALETTE['kpi_border']};
+        border-radius: 8px; /* Arredondamento sutil para combinar */
+    }}
+    
+    /* Botões */
+    [data-testid="stButton"] > button, 
+    [data-testid="stFormSubmitButton"] > button {{
+        border-radius: 8px !important; /* Cantos sutis */
+        border: 1px solid {COLOR_PALETTE['kpi_border']};
+    }}
+
+    /* Correção de KPI (mantida) */
+    [data-testid="stMetricValue"] {{ 
+        color: {COLOR_PALETTE['text_dark']}; 
+        font-size: 2.2rem; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+        font-family: Arial, Helvetica, sans-serif !important; 
+    }}
+
+    /* --- AJUSTES PARA RESPONSIVIDADE MÓVEL --- */
+    @media (max-width: 768px) {{
+        
+        /* Força os st.columns() a empilhar verticalmente em telas pequenas */
+        [data-testid="stHorizontalBlock"] {{
+            flex-direction: column !important;
+            flex-wrap: wrap !important;
+        }}
+
+        /* Garante que os itens empilhados ocupem a largura total */
+        [data-testid="stHorizontalBlock"] > div[data-testid^="stVerticalBlock"] {{
+             width: 100% !important;
+             flex: 1 1 100% !important; 
+             margin-bottom: 15px; 
+        }}
+        
+        [data-testid="stHorizontalBlock"] > div[data-testid^="stVerticalBlock"]:last-child {{
+             margin-bottom: 0px;
+        }}
+
+        [data-testid="stMetric"] {{
+            padding: 15px;
+        }}
+
+        [data-testid="stMetricValue"] {{ 
+            font-size: 1.8rem;
+        }}
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -200,7 +280,7 @@ def carregar_dados_sheets_seguro():
         st.error(f"Erro de Configuração: Falha ao acessar o segredo: {e}. Verifique o seu secrets.toml.")
         return pd.DataFrame()
     except Exception as e:
-        st.error("🚨 Erro Crítico de Conexão: Não foi possível carregar os dados do Google Sheet.")
+        st.error("Erro Crítico de Conexão: Não foi possível carregar os dados do Google Sheet.")
         st.warning(f"Detalhe: {e}")
         st.info("Verifique as permissões de acesso do Google Sheet.")
         return pd.DataFrame()
@@ -339,8 +419,8 @@ if not df.empty:
                 marker_color=MEDICAL_BLUE,
                 hovertemplate='Departamento: %{x}<br>Valor Pago: R$ %{y:,.2f}<extra></extra>' 
             )
-            fig_dept.update_layout(plot_bgcolor='rgba(0,0,0,0)') 
-            # AVISO CORRIGIDO: width='stretch' movido para dentro de config
+            # ALTERADO: Fonte do gráfico para Arial
+            fig_dept.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial") 
             st.plotly_chart(fig_dept, config={**plotly_config, 'width': 'stretch'}) 
 
         # Gráfico 2: Projetos por Modalidade - CORREÇÃO DE CONFIG
@@ -352,8 +432,8 @@ if not df.empty:
                 df_graf_mod, names='Modalidade', values='count', title="Distribuição de Projetos por Modalidade",
                 template="plotly_white", color_discrete_sequence=px.colors.sequential.Blues_r
             )
-            fig_mod.update_layout(plot_bgcolor='rgba(0,0,0,0)')
-            # AVISO CORRIGIDO: width='stretch' movido para dentro de config
+             # ALTERADO: Fonte do gráfico para Arial
+            fig_mod.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
             st.plotly_chart(fig_mod, config={**plotly_config, 'width': 'stretch'}) 
 
         # Gráfico 3: Cronograma de Projetos (Gantt) - CORREÇÃO DE CONFIG
@@ -369,8 +449,8 @@ if not df.empty:
                 labels={'Titulo Projeto': 'Projeto'}, template="plotly_white", color_discrete_sequence=px.colors.sequential.Teal
             )
             fig_timeline.update_yaxes(autorange="reversed")
-            fig_timeline.update_layout(plot_bgcolor='rgba(0,0,0,0)', height=600)
-            # AVISO CORRIGIDO: width='stretch' movido para dentro de config
+             # ALTERADO: Fonte do gráfico para Arial
+            fig_timeline.update_layout(plot_bgcolor='rgba(0,0,0,0)', height=600, font_family="Arial") 
             st.plotly_chart(fig_timeline, config={**plotly_config, 'width': 'stretch'}) 
         else:
             st.info("Não há dados de cronograma válidos para exibir o Gráfico de Gantt.")
