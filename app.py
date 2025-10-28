@@ -7,7 +7,6 @@ import gspread
 from streamlit_cookies_manager import EncryptedCookieManager
 
 # --- CONFIGURAÇÃO DE COOKIES PARA PERSISTÊNCIA DE LOGIN ---
-# [USANDO O SEU BLOCO DE CÓDIGO VALIDADO]
 try:
     cookies = EncryptedCookieManager(
         prefix="cism_dash_auth_",
@@ -294,7 +293,6 @@ def carregar_dados_relatorio_seguro():
         sheet_name = st.secrets["sheets_config"]["sheet_name_report"] 
         creds = st.secrets["gcp_service_account"]
         
-        # [NOVO] Lê os nomes das colunas-chave do secrets.toml
         col_conta = st.secrets["parser_config"]["col_conta_corrente"]
         col_alinea = st.secrets["parser_config"]["col_alinea"]
         col_desc = st.secrets["parser_config"]["col_descricao"]
@@ -316,7 +314,6 @@ def carregar_dados_relatorio_seguro():
         # --- 3. LÓGICA DE PARSING V4 ---
         header = [str(col).strip() for col in data[0]]
         
-        # [ATUALIZADO] Mapeia os nomes do secrets para os índices das colunas
         try:
             col_idx_conta = header.index(col_conta)
             col_idx_alinea = header.index(col_alinea)
@@ -330,7 +327,7 @@ def carregar_dados_relatorio_seguro():
 
         dados_processados = []
         projeto_atual = "N/A"
-        projeto_encontrado = False # "Trava" para ignorar lixo no início
+        projeto_encontrado = False 
 
         for row in data[1:]:
             if len(row) < max(col_idx_conta, col_idx_alinea, col_idx_desc, col_idx_val_concedido): 
@@ -341,21 +338,18 @@ def carregar_dados_relatorio_seguro():
             celula_C_str = str(row[col_idx_desc]).strip()
             search_str = f"{celula_A_str} {celula_B_str} {celula_C_str}"
 
-            # CASO 1: É uma linha de "PROJETO"?
             if "PROJETO:" in search_str:
                 _pre, _sep, nome_projeto = search_str.partition("PROJETO:")
                 projeto_atual = nome_projeto.strip()
                 projeto_encontrado = True 
                 continue 
 
-            # CASO 2: É uma linha de "TOTAL" ou um título de seção?
             if celula_A_str.startswith("TOTAL:") or celula_A_str.startswith("PROJETOS VERBAS"):
                 continue 
             
             if not projeto_encontrado:
                 continue
             
-            # CASO 3: É uma linha de dados válida?
             celula_B_val = row[col_idx_alinea]
             celula_D_val = row[col_idx_val_concedido]
 
@@ -373,7 +367,6 @@ def carregar_dados_relatorio_seguro():
                 linha_dados["Projeto"] = projeto_atual 
                 dados_processados.append(linha_dados)
         
-        # --- FIM DO PARSING ---
         if not dados_processados:
             st.warning(f"Nenhum dado de projeto foi extraído da aba '{sheet_name}'.")
             return pd.DataFrame()
@@ -386,11 +379,7 @@ def carregar_dados_relatorio_seguro():
             '$ Executado', 'Saldo Projeto', 'Saldo C.Cor',
             'Aditivo/Anulação', 'Reman. Rec', 'Reman. Env', 'Lib. Recursos'
         ]
-        # Lista de nomes de colunas do secrets.toml para limpeza
-        cols_parser_config = [
-            st.secrets["parser_config"]["col_valor_concedido"]
-        ]
-        # Adiciona nomes de colunas do parser_config à lista, se ainda não estiverem
+        cols_parser_config = [ col_val_concedido ]
         for col_name in cols_parser_config:
              if col_name not in cols_monetarias:
                   cols_monetarias.append(col_name)
@@ -423,7 +412,7 @@ st.sidebar.markdown(f"**Usuário Logado:** `{st.session_state.get('authenticated
 
 # 3. CARREGAMENTO DOS DADOS (AMBAS AS ABAS)
 df = carregar_dados_sheets_seguro()
-df_detalhado = carregar_dados_relatorio_seguro() # Carrega a nova aba
+df_detalhado = carregar_dados_relatorio_seguro() 
 
 # --- Início do Dashboard (Aba 1) ---
 if not df.empty:
@@ -537,6 +526,25 @@ if not df.empty:
             fig_mod.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
             st.plotly_chart(fig_mod, config={**plotly_config, 'width': 'stretch'}) 
 
+        # --- [NOVO GRÁFICO 1] Valores por Agência ---
+        st.subheader("Valores por Agência (Gasto vs. Reservado)")
+        df_agencia = df_filtrado.groupby('Agência')[['Valor Pago', 'Valor Reservado']].sum().reset_index()
+        df_agencia_melted = df_agencia.melt(id_vars='Agência', var_name='Tipo', value_name='Valor')
+        df_agencia_melted = df_agencia_melted.sort_values(by='Valor', ascending=False)
+        
+        fig_agencia = px.bar(
+            df_agencia_melted, x='Agência', y='Valor', color='Tipo',
+            title='Total Pago vs. Reservado por Agência',
+            labels={'Valor': 'Valor Total (R$)', 'Agência': 'Agência', 'Tipo': 'Tipo de Valor'},
+            template="plotly_white",
+            barmode='group' # Cria barras agrupadas
+        )
+        fig_agencia.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
+        fig_agencia.update_traces(hovertemplate='Agência: %{x}<br>Valor: R$ %{y:,.2f}<extra></extra>')
+        fig_agencia.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+        st.plotly_chart(fig_agencia, config={**plotly_config, 'width': 'stretch'})
+        # --- Fim do Novo Gráfico 1 ---
+
         # Gráfico 3: Cronograma de Projetos (Gantt)
         st.subheader("Cronograma de Projetos (Gantt)")
         df_gantt = df_filtrado.dropna(subset=['Inic.Vigencia', 'Fim Vigencia', 'Titulo Projeto']).sort_values(by='Inic.Vigencia')
@@ -576,35 +584,34 @@ elif df.empty and df_detalhado.empty:
 # --- [SEÇÃO] Exibição dos dados do Relatório (Aba "Balancete") ---
 if not df_detalhado.empty:
     st.markdown("---")
-    st.header(f"Detalhamento Financeiro por Projeto ({st.secrets['sheets_config']['sheet_name_report']})")
     
-    # Tenta ler os nomes das colunas do parser_config para os filtros
+    # Nomes das colunas do secrets.toml
     try:
         col_alinea_nome = st.secrets["parser_config"]["col_alinea"]
         col_val_concedido_nome = st.secrets["parser_config"]["col_valor_concedido"]
+        col_descricao_nome = st.secrets["parser_config"]["col_descricao"]
     except KeyError:
-        # Fallback para nomes padrão se o parser_config estiver incompleto
         col_alinea_nome = "Alínea"
         col_val_concedido_nome = "Valor Concedido"
+        col_descricao_nome = "Descrição"
+        
+    st.header(f"Detalhamento Financeiro por Projeto (Aba: {st.secrets['sheets_config']['sheet_name_report']})")
     
-    
-    # Filtro simples para os dados da Planilha1
+    # Filtro de Projeto para a tabela e gráficos
     projetos_lista = sorted(df_detalhado['Projeto'].unique())
     
-    # --- [CORREÇÃO APLICADA AQUI] ---
     projeto_selecionado = st.multiselect(
         "Filtrar por Projeto (Detalhado):",
         options=projetos_lista,
-        default=[] # Alterado de [:5] para uma lista vazia
+        default=[] # [CORREÇÃO] Inicia com lista vazia (mostra tudo)
     )
     
-    # Esta lógica agora funciona como esperado:
-    # Se nada for selecionado (default=[]), o 'else' é ativado e mostra tudo.
     if projeto_selecionado:
         df_detalhado_filtrado = df_detalhado[df_detalhado['Projeto'].isin(projeto_selecionado)]
     else:
-        df_detalhado_filtrado = df_detalhado
+        df_detalhado_filtrado = df_detalhado # Mostra tudo por padrão
 
+    # Exibe a tabela detalhada
     st.dataframe(
         df_detalhado_filtrado,
         column_config={
@@ -618,3 +625,49 @@ if not df_detalhado.empty:
         },
         width='stretch'
     )
+
+    # --- [NOVOS GRÁFICOS 2 & 3] Análises Detalhadas do Balancete ---
+    st.markdown("---")
+    st.header("Análises Detalhadas do Balancete")
+    st.info("Os gráficos abaixo são filtrados pela seleção de projetos feita acima.")
+
+    if not df_detalhado_filtrado.empty:
+        col_det1, col_det2 = st.columns(2)
+
+        # Gráfico 2a: Gastos por Descrição
+        with col_det1:
+            st.subheader(f"Top 15 Gastos por {col_descricao_nome}")
+            df_graf_desc = df_detalhado_filtrado.groupby(col_descricao_nome)['Valor Pago'].sum().reset_index()
+            df_graf_desc = df_graf_desc.sort_values(by='Valor Pago', ascending=False).head(15)
+            
+            fig_desc = px.bar(
+                df_graf_desc, x=col_descricao_nome, y='Valor Pago',
+                title=f"Top 15 Gastos por {col_descricao_nome}",
+                labels={'Valor Pago': 'Valor Total Pago (R$)'},
+                template="plotly_white"
+            )
+            fig_desc.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
+            fig_desc.update_traces(marker_color=MEDICAL_BLUE, hovertemplate='Descrição: %{x}<br>Valor Pago: R$ %{y:,.2f}<extra></extra>')
+            fig_desc.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+            st.plotly_chart(fig_desc, config={**plotly_config, 'width': 'stretch'})
+        
+        # Gráfico 2b: Gastos por Alínea
+        with col_det2:
+            st.subheader(f"Top 15 Gastos por {col_alinea_nome}")
+            df_graf_alinea = df_detalhado_filtrado.groupby(col_alinea_nome)['Valor Pago'].sum().reset_index()
+            df_graf_alinea = df_graf_alinea.sort_values(by='Valor Pago', ascending=False).head(15)
+
+            fig_alinea = px.bar(
+                df_graf_alinea, x=col_alinea_nome, y='Valor Pago',
+                title=f"Top 15 Gastos por {col_alinea_nome}",
+                labels={'Valor Pago': 'Valor Total Pago (R$)'},
+                template="plotly_white"
+            )
+            fig_alinea.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
+            fig_alinea.update_traces(marker_color=COLOR_PALETTE['primary'], hovertemplate='Alínea: %{x}<br>Valor Pago: R$ %{y:,.2f}<extra></extra>')
+            fig_alinea.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+            st.plotly_chart(fig_alinea, config={**plotly_config, 'width': 'stretch'})
+
+    else:
+        # Isso acontece se o usuário remover todos os projetos do filtro
+        st.warning("Nenhum projeto selecionado para exibir os gráficos detalhados.")
