@@ -1,0 +1,23 @@
+[theme]
+# Tema Claro (Light) 
+primaryColor = "#0D6E6E"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#31333F"
+font = "sans serif"
+
+[theme.dark]
+# Tema Escuro (Dark)
+primaryColor = "#1ECECE"           # Um azul-petróleo mais brilhante para destacar no escuro
+backgroundColor = "#0E1117"           # O fundo escuro padrão do Streamlit
+secondaryBackgroundColor = "#1C202B"  # Um cinza escuro para os "cards" (KPIs, gráficos)
+textColor = "#FAFAFA"                 # Texto claro (branco-suave)
+font = "sans serif"
+
+[theme.light]
+# Definimos o tema claro de novo para garantir
+primaryColor = "#0D6E6E"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#31333F"
+font = "sans serif"
