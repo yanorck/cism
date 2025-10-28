@@ -1,0 +1,6 @@
+streamlit
+pandas
+plotly
+numpy
+gspread
+streamlit-cookies-manager
