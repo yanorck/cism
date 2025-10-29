@@ -110,7 +110,7 @@ st.markdown(f"""
 <style>
     /* --- CONFIGURAÇÃO GERAL "ROBUSTO PROFISSIONAL" --- */
     /* Define a fonte Arial (robusta) para todo o app */
-    body, .stApp, input, textarea, button, select, p, div, span {{
+    body, .stApp, input, textarea, button, select, p {{
         font-family: Arial, Helvetica, sans-serif !important;
     }}
 
