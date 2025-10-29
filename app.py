@@ -257,13 +257,21 @@ def carregar_dados_sheets_seguro():
             df = pd.DataFrame(data[1:], columns=data[0])
             df.columns = [limpar_nome_coluna(col) for col in df.columns]
 
+            # --- [NOVO] Normalização do Titulo Projeto ---
+            # Isso corrige inconsistências como "–" vs "-" e espaços extras
+            if 'Titulo Projeto' in df.columns:
+                df['Titulo Projeto'] = df['Titulo Projeto'].astype(str) # Garante que é string
+                df['Titulo Projeto'] = df['Titulo Projeto'].str.replace("–", "-", regex=False) # Troca M-dash por hífen
+                df['Titulo Projeto'] = df['Titulo Projeto'].str.replace(r"\s+", " ", regex=True) # Normaliza espaços
+                df['Titulo Projeto'] = df['Titulo Projeto'].str.strip() # Remove espaços das pontas
+
             # Aplica limpeza apenas se as colunas existirem
             if 'Liberações' in df.columns:
-                 df['Liberações'] = limpar_e_converter_monetario(df['Liberações'])
+                df['Liberações'] = limpar_e_converter_monetario(df['Liberações'])
             if 'Valor Reservado' in df.columns:
-                 df['Valor Reservado'] = limpar_e_converter_monetario(df['Valor Reservado'])
+                df['Valor Reservado'] = limpar_e_converter_monetario(df['Valor Reservado'])
             if 'Valor Pago' in df.columns:
-                 df['Valor Pago'] = limpar_e_converter_monetario(df['Valor Pago'])
+                df['Valor Pago'] = limpar_e_converter_monetario(df['Valor Pago'])
 
             if 'Inic.Vigencia' in df.columns:
                 df['Inic.Vigencia'] = pd.to_datetime(df['Inic.Vigencia'], format='%d/%m/%Y', errors='coerce')
@@ -278,8 +286,8 @@ def carregar_dados_sheets_seguro():
         st.error(f"Erro de Configuração (Aba 1): Falha ao acessar o segredo: {e}. Verifique o seu secrets.toml.")
         return pd.DataFrame()
     except gspread.exceptions.WorksheetNotFound:
-         st.error(f"Erro Crítico: A aba '{sheet_name}' não foi encontrada na planilha. Verifique o nome em secrets.toml.")
-         return pd.DataFrame()
+       st.error(f"Erro Crítico: A aba '{sheet_name}' não foi encontrada na planilha. Verifique o nome em secrets.toml.")
+       return pd.DataFrame()
     except Exception as e:
         st.error(f"Erro Crítico de Conexão (Aba 1): Não foi possível carregar os dados do Google Sheet: {e}")
         st.info("Verifique as permissões de acesso da Aba 1 e a conexão com a internet.")
@@ -374,7 +382,7 @@ def carregar_dados_relatorio_seguro():
                 celula_B_val = row[col_idx_alinea]
                 celula_D_val = row[col_idx_val_concedido]
             except IndexError:
-                 continue # Pula se a linha for curta demais
+                continue # Pula se a linha for curta demais
 
             # Checagem mais robusta para valores 'vazios' ou 'nan'
             is_B_valid = celula_B_val is not None and celula_B_val != "" and str(celula_B_val).strip().lower() != "nan"
@@ -423,8 +431,8 @@ def carregar_dados_relatorio_seguro():
         return df
 
     except gspread.exceptions.WorksheetNotFound:
-         st.error(f"Erro Crítico: A aba de relatório '{sheet_name}' não foi encontrada na planilha. Verifique o nome em secrets.toml.")
-         return pd.DataFrame()
+       st.error(f"Erro Crítico: A aba de relatório '{sheet_name}' não foi encontrada na planilha. Verifique o nome em secrets.toml.")
+       return pd.DataFrame()
     except Exception as e:
         st.error(f"Erro Crítico de Conexão ou Processamento (Aba '{sheet_name}'): {e}")
         st.info("Verifique as permissões, nomes de colunas no secrets.toml e a conexão.")
@@ -456,12 +464,24 @@ if not df.empty:
     # Filtros de Seleção Múltipla
     lista_dept = sorted(df['Departamento'].dropna().unique())
     dept_selecionados = st.sidebar.multiselect("Departamento:", options=lista_dept, default=[])
+    
     lista_coord = sorted(df['Coordenador'].dropna().unique())
     coord_selecionados = st.sidebar.multiselect("Coordenador:", options=lista_coord, default=[])
+    
     lista_agencia = sorted(df['Agência'].dropna().unique())
     agencia_selecionadas = st.sidebar.multiselect("Agência:", options=lista_agencia, default=[])
+    
     lista_modalidade = sorted(df['Modalidade'].dropna().unique())
     modalidade_selecionadas = st.sidebar.multiselect("Modalidade:", options=lista_modalidade, default=[])
+
+    # --- [NOVO] Filtro de Projeto ---
+    if 'Titulo Projeto' in df.columns:
+        lista_projetos = sorted(df['Titulo Projeto'].dropna().unique())
+        projetos_selecionados = st.sidebar.multiselect("Projeto:", options=lista_projetos, default=[])
+    else:
+        st.sidebar.warning("Coluna 'Titulo Projeto' não encontrada.")
+        projetos_selecionados = []
+
 
     # Filtro de Data
     data_min_series = df['Inic.Vigencia'].dropna().min()
@@ -491,6 +511,11 @@ if not df.empty:
         df_filtrado = df_filtrado[df_filtrado['Agência'].isin(agencia_selecionadas)]
     if modalidade_selecionadas:
         df_filtrado = df_filtrado[df_filtrado['Modalidade'].isin(modalidade_selecionadas)]
+    
+    # --- [NOVO] Aplica filtro de Projeto ---
+    if projetos_selecionados:
+        df_filtrado = df_filtrado[df_filtrado['Titulo Projeto'].isin(projetos_selecionados)]
+
 
     # Aplica filtro de data apenas se o usuário selecionou um intervalo
     if data_selecionada and len(data_selecionada) == 2:
@@ -511,7 +536,7 @@ if not df.empty:
     total_liberacoes = pd.to_numeric(df_filtrado['Liberações'], errors='coerce').sum() if 'Liberações' in df_filtrado else 0
     total_reservado = pd.to_numeric(df_filtrado['Valor Reservado'], errors='coerce').sum() if 'Valor Reservado' in df_filtrado else 0
     total_pago = pd.to_numeric(df_filtrado['Valor Pago'], errors='coerce').sum() if 'Valor Pago' in df_filtrado else 0
-    num_projetos = df_filtrado['Nº Processo'].nunique() if 'Nº Processo' in df_filtrado else 0
+    num_projetos = df_filtrado['Titulo Projeto'].nunique() if 'Titulo Projeto' in df_filtrado else 0
 
     def format_brl(value):
          # Adiciona verificação para NaN ou None
@@ -547,34 +572,34 @@ if not df.empty:
         # Gráfico 1: Valor Pago por Departamento
         with col_graf1:
             if 'Departamento' in df_filtrado.columns and 'Valor Pago' in df_filtrado.columns:
-                 st.subheader("Valor Pago por Departamento")
-                 df_graf_dept = df_filtrado.groupby('Departamento', dropna=False)['Valor Pago'].sum().reset_index()
-                 df_graf_dept = df_graf_dept.sort_values(by='Valor Pago', ascending=False)
-                 fig_dept = px.bar(
-                     df_graf_dept, x='Departamento', y='Valor Pago', title="Total Pago por Departamento",
-                     labels={'Valor Pago': 'Valor Total Pago (R$)'}
-                 )
-                 fig_dept.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
-                 fig_dept.update_traces(hovertemplate='Departamento: %{x}<br>Valor Pago: R$ %{y:,.2f}<extra></extra>')
-                 fig_dept.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
-                 st.plotly_chart(fig_dept, config={**plotly_config}, use_container_width=True)
+                st.subheader("Valor Pago por Departamento")
+                df_graf_dept = df_filtrado.groupby('Departamento', dropna=False)['Valor Pago'].sum().reset_index()
+                df_graf_dept = df_graf_dept.sort_values(by='Valor Pago', ascending=False)
+                fig_dept = px.bar(
+                    df_graf_dept, x='Departamento', y='Valor Pago', title="Total Pago por Departamento",
+                    labels={'Valor Pago': 'Valor Total Pago (R$)'}
+                )
+                fig_dept.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
+                fig_dept.update_traces(hovertemplate='Departamento: %{x}<br>Valor Pago: R$ %{y:,.2f}<extra></extra>')
+                fig_dept.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+                st.plotly_chart(fig_dept, config={**plotly_config}, use_container_width=True)
             else:
-                 st.warning("Colunas 'Departamento' ou 'Valor Pago' não encontradas para o gráfico.")
+                st.warning("Colunas 'Departamento' ou 'Valor Pago' não encontradas para o gráfico.")
 
 
         # Gráfico 2: Projetos por Modalidade
         with col_graf2:
             if 'Modalidade' in df_filtrado.columns:
-                 st.subheader("Projetos por Modalidade")
-                 df_graf_mod = df_filtrado['Modalidade'].value_counts().reset_index(name='count')
-                 fig_mod = px.pie(
-                     df_graf_mod, names='Modalidade', values='count', title="Distribuição de Projetos por Modalidade",
-                     color_discrete_sequence=px.colors.sequential.Blues_r
-                 )
-                 fig_mod.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
-                 st.plotly_chart(fig_mod, config={**plotly_config}, use_container_width=True)
+                st.subheader("Projetos por Modalidade")
+                df_graf_mod = df_filtrado['Modalidade'].value_counts().reset_index(name='count')
+                fig_mod = px.pie(
+                    df_graf_mod, names='Modalidade', values='count', title="Distribuição de Projetos por Modalidade",
+                    color_discrete_sequence=px.colors.sequential.Blues_r
+                )
+                fig_mod.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+                st.plotly_chart(fig_mod, config={**plotly_config}, use_container_width=True)
             else:
-                 st.warning("Coluna 'Modalidade' não encontrada para o gráfico.")
+                st.warning("Coluna 'Modalidade' não encontrada para o gráfico.")
 
         # --- Valores por Agência ---
         if 'Agência' in df_filtrado.columns and 'Valor Pago' in df_filtrado.columns and 'Valor Reservado' in df_filtrado.columns:
@@ -595,6 +620,37 @@ if not df.empty:
              st.plotly_chart(fig_agencia, config={**plotly_config}, use_container_width=True)
         else:
             st.warning("Colunas 'Agência', 'Valor Pago' ou 'Valor Reservado' não encontradas para o gráfico.")
+        
+        # --- [NOVO] Gráfico: Valor Pago por Projeto ---
+        if 'Titulo Projeto' in df_filtrado.columns and 'Valor Pago' in df_filtrado.columns:
+            st.subheader("Valor Pago por Projeto")
+            
+            # Agrupa por 'Titulo Projeto' e soma 'Valor Pago'
+            df_graf_proj = df_filtrado.groupby('Titulo Projeto', dropna=False)['Valor Pago'].sum().reset_index()
+            
+            # Filtra projetos com valor 0 para não poluir o gráfico
+            df_graf_proj = df_graf_proj[df_graf_proj['Valor Pago'] > 0]
+            
+            # Ordena do maior para o menor
+            df_graf_proj = df_graf_proj.sort_values(by='Valor Pago', ascending=False)
+            
+            if not df_graf_proj.empty:
+                fig_proj = px.bar(
+                    df_graf_proj, 
+                    x='Titulo Projeto', 
+                    y='Valor Pago', 
+                    title="Total Pago por Projeto (Filtrado)",
+                    labels={'Valor Pago': 'Valor Total Pago (R$)', 'Titulo Projeto': 'Projeto'}
+                )
+                fig_proj.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
+                fig_proj.update_traces(hovertemplate='Projeto: %{x}<br>Valor Pago: R$ %{y:,.2f}<extra></extra>')
+                fig_proj.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+                st.plotly_chart(fig_proj, config={**plotly_config}, use_container_width=True)
+            else:
+                # Isso pode acontecer se os filtros zerarem os valores
+                st.info("Nenhum valor pago encontrado para os projetos nos filtros selecionados.")
+        else:
+            st.warning("Colunas 'Titulo Projeto' ou 'Valor Pago' não encontradas para o gráfico por projeto.")
 
 
         # Gráfico 3: Cronograma de Projetos (Gantt)
@@ -699,60 +755,60 @@ if not df_detalhado.empty:
         # Gráfico 2a: Gastos por Descrição
         with col_det1:
             if col_descricao_nome in df_detalhado_filtrado.columns and 'Valor Pago' in df_detalhado_filtrado.columns:
-                 st.subheader(f"Top 15 Gastos por {col_descricao_nome}")
-                 # Garante que 'Valor Pago' seja numérico antes de agrupar
-                 df_detalhado_filtrado['Valor Pago Num'] = pd.to_numeric(df_detalhado_filtrado['Valor Pago'], errors='coerce')
-                 # Remove linhas onde 'Valor Pago Num' é NaN (se houver algum erro de conversão)
-                 df_graf_desc_raw = df_detalhado_filtrado.dropna(subset=['Valor Pago Num'])
-                 df_graf_desc = df_graf_desc_raw.groupby(col_descricao_nome)['Valor Pago Num'].sum().reset_index()
-                 df_graf_desc = df_graf_desc.sort_values(by='Valor Pago Num', ascending=False).head(15)
+                st.subheader(f"Top 15 Gastos por {col_descricao_nome}")
+                # Garante que 'Valor Pago' seja numérico antes de agrupar
+                df_detalhado_filtrado['Valor Pago Num'] = pd.to_numeric(df_detalhado_filtrado['Valor Pago'], errors='coerce')
+                # Remove linhas onde 'Valor Pago Num' é NaN (se houver algum erro de conversão)
+                df_graf_desc_raw = df_detalhado_filtrado.dropna(subset=['Valor Pago Num'])
+                df_graf_desc = df_graf_desc_raw.groupby(col_descricao_nome)['Valor Pago Num'].sum().reset_index()
+                df_graf_desc = df_graf_desc.sort_values(by='Valor Pago Num', ascending=False).head(15)
 
-                 if not df_graf_desc.empty:
-                     fig_desc = px.bar(
-                         df_graf_desc, x=col_descricao_nome, y='Valor Pago Num',
-                         title=f"Top 15 Gastos por {col_descricao_nome}",
-                         labels={'Valor Pago Num': 'Valor Total Pago (R$)'}
-                     )
-                     fig_desc.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
-                     fig_desc.update_traces(hovertemplate=f'{col_descricao_nome}: %{{x}}<br>Valor Pago: R$ %{{y:,.2f}}<extra></extra>')
-                     fig_desc.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
-                     st.plotly_chart(fig_desc, config={**plotly_config}, use_container_width=True)
-                 else:
-                      st.info("Nenhum dado de gastos por descrição para exibir.")
+                if not df_graf_desc.empty:
+                    fig_desc = px.bar(
+                        df_graf_desc, x=col_descricao_nome, y='Valor Pago Num',
+                        title=f"Top 15 Gastos por {col_descricao_nome}",
+                        labels={'Valor Pago Num': 'Valor Total Pago (R$)'}
+                    )
+                    fig_desc.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
+                    fig_desc.update_traces(hovertemplate=f'{col_descricao_nome}: %{{x}}<br>Valor Pago: R$ %{{y:,.2f}}<extra></extra>')
+                    fig_desc.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+                    st.plotly_chart(fig_desc, config={**plotly_config}, use_container_width=True)
+                else:
+                     st.info("Nenhum dado de gastos por descrição para exibir.")
             else:
-                 st.warning(f"Colunas '{col_descricao_nome}' ou 'Valor Pago' não encontradas para o gráfico.")
+                st.warning(f"Colunas '{col_descricao_nome}' ou 'Valor Pago' não encontradas para o gráfico.")
 
         # Gráfico 2b: Gastos por Alínea
         with col_det2:
             if col_alinea_nome in df_detalhado_filtrado.columns and 'Valor Pago' in df_detalhado_filtrado.columns:
-                 st.subheader(f"Top 15 Gastos por {col_alinea_nome}")
-                 # Reutiliza a coluna numérica se já criada, senão cria
-                 if 'Valor Pago Num' not in df_detalhado_filtrado.columns:
-                     df_detalhado_filtrado['Valor Pago Num'] = pd.to_numeric(df_detalhado_filtrado['Valor Pago'], errors='coerce')
+                st.subheader(f"Top 15 Gastos por {col_alinea_nome}")
+                # Reutiliza a coluna numérica se já criada, senão cria
+                if 'Valor Pago Num' not in df_detalhado_filtrado.columns:
+                    df_detalhado_filtrado['Valor Pago Num'] = pd.to_numeric(df_detalhado_filtrado['Valor Pago'], errors='coerce')
 
-                 # Remove linhas onde 'Valor Pago Num' é NaN
-                 df_graf_alinea_raw = df_detalhado_filtrado.dropna(subset=['Valor Pago Num'])
+                # Remove linhas onde 'Valor Pago Num' é NaN
+                df_graf_alinea_raw = df_detalhado_filtrado.dropna(subset=['Valor Pago Num'])
 
-                 # Converte Alínea para string para evitar problemas de tipo misto no groupby
-                 df_graf_alinea_raw[col_alinea_nome] = df_graf_alinea_raw[col_alinea_nome].astype(str)
+                # Converte Alínea para string para evitar problemas de tipo misto no groupby
+                df_graf_alinea_raw[col_alinea_nome] = df_graf_alinea_raw[col_alinea_nome].astype(str)
 
-                 df_graf_alinea = df_graf_alinea_raw.groupby(col_alinea_nome)['Valor Pago Num'].sum().reset_index()
-                 df_graf_alinea = df_graf_alinea.sort_values(by='Valor Pago Num', ascending=False).head(15)
+                df_graf_alinea = df_graf_alinea_raw.groupby(col_alinea_nome)['Valor Pago Num'].sum().reset_index()
+                df_graf_alinea = df_graf_alinea.sort_values(by='Valor Pago Num', ascending=False).head(15)
 
-                 if not df_graf_alinea.empty:
-                     fig_alinea = px.bar(
-                         df_graf_alinea, x=col_alinea_nome, y='Valor Pago Num',
-                         title=f"Top 15 Gastos por {col_alinea_nome}",
-                         labels={'Valor Pago Num': 'Valor Total Pago (R$)'}
-                     )
-                     fig_alinea.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
-                     fig_alinea.update_traces(hovertemplate=f'{col_alinea_nome}: %{{x}}<br>Valor Pago: R$ %{{y:,.2f}}<extra></extra>')
-                     fig_alinea.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
-                     st.plotly_chart(fig_alinea, config={**plotly_config}, use_container_width=True)
-                 else:
-                     st.info("Nenhum dado de gastos por alínea para exibir.")
+                if not df_graf_alinea.empty:
+                    fig_alinea = px.bar(
+                        df_graf_alinea, x=col_alinea_nome, y='Valor Pago Num',
+                        title=f"Top 15 Gastos por {col_alinea_nome}",
+                        labels={'Valor Pago Num': 'Valor Total Pago (R$)'}
+                    )
+                    fig_alinea.update_yaxes(tickprefix="R$ ", separatethousands=True, tickformat=",")
+                    fig_alinea.update_traces(hovertemplate=f'{col_alinea_nome}: %{{x}}<br>Valor Pago: R$ %{{y:,.2f}}<extra></extra>')
+                    fig_alinea.update_layout(plot_bgcolor='rgba(0,0,0,0)', font_family="Arial")
+                    st.plotly_chart(fig_alinea, config={**plotly_config}, use_container_width=True)
+                else:
+                    st.info("Nenhum dado de gastos por alínea para exibir.")
             else:
-                 st.warning(f"Colunas '{col_alinea_nome}' ou 'Valor Pago' não encontradas para o gráfico.")
+                st.warning(f"Colunas '{col_alinea_nome}' ou 'Valor Pago' não encontradas para o gráfico.")
 
     else:
         # Isso acontece se o usuário remover todos os projetos do filtro
