@@ -33,20 +33,24 @@ if not cookies.ready():
 # [MUDANÇA DE POSIÇÃO]
 st.markdown(f"""
 <style>
-    /* [SUA SOLUÇÃO] Remove o cabeçalho "fantasma" do Streamlit */
+    /* [SUA DESCOBERTA] Remove o cabeçalho "fantasma" do Streamlit */
     .stAppHeader {{
             background-color: rgba(255, 255, 255, 0.0);
             visibility: hidden; 
             display: none; 
     }}
 
-    /* [SUA SOLUÇÃO] Remove o padding do topo do container principal */
+    /* [SUA DESCOBERTA] Remove o padding do topo do container principal */
     .block-container {{
         padding-top: 0rem !important;
         padding-bottom: 0rem !important;
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important;
     }}
+    
+    /* [SUA NOVA DESCOBERTA] Esconde Menu e Footer */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
     
     /* [REGRA 1] Oculta a barra de ferramentas superior (Deploy, etc.) */
     [data-testid="stToolbar"] {{
@@ -652,6 +656,7 @@ with tab_geral:
 
         st.subheader("Análises Visuais (Visão Geral)") # [MUDANÇA] Header -> Subheader
 
+        # [SOLUÇÃO DA FOTO] Adicionado 'displaylogo': False
         plotly_config = {'displayModeBar': False, 'responsive': True, 'displaylogo': False}
 
         if df_filtrado.empty:
