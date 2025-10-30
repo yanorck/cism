@@ -652,7 +652,7 @@ with tab_geral:
 
         st.subheader("Análises Visuais (Visão Geral)") # [MUDANÇA] Header -> Subheader
 
-        plotly_config = {'displayModeBar': False, 'responsive': True}
+        plotly_config = {'displayModeBar': False, 'responsive': True, 'displaylogo': False}
 
         if df_filtrado.empty:
             st.warning("Nenhum dado encontrado para os filtros selecionados (Visão Geral).")
